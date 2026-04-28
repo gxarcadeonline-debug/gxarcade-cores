@@ -8,54 +8,57 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y build-essential git python3 pkg-config
+          sudo apt install -y build-essential git python3 pkg-config p7zip-full zip
 
       - name: Setup Emscripten
         run: |
           git clone https://github.com/emscripten-core/emsdk.git
           cd emsdk
-          ./emsdk install latest
-          ./emsdk activate latest
+          ./emsdk install 3.1.51
+          ./emsdk activate 3.1.51
 
-      - name: Build vecx core
+      - name: Build vecx libretro core
         run: |
           source emsdk/emsdk_env.sh
           git clone https://github.com/libretro/libretro-vecx.git
           cd libretro-vecx
-
           emmake make -f Makefile.libretro platform=emscripten EMSCRIPTEN=1 -j2
+          echo "GENERATED FILES:"
+          find . -maxdepth 2 -type f | sort
 
-          echo "Archivos generados:"
-          ls -la
+      - name: Clone EmulatorJS RetroArch
+        run: |
+          git clone https://github.com/EmulatorJS/RetroArch.git --branch next
 
-      - name: Clone EmulatorJS builder
+      - name: Prepare core for EmulatorJS
+        run: |
+          cp libretro-vecx/vecx_libretro_emscripten.bc RetroArch/dist-scripts/vecx_libretro.bc
+          echo "DIST SCRIPTS:"
+          ls -la RetroArch/dist-scripts | grep vecx || true
+
+      - name: Locate EmulatorJS build script
+        run: |
+          echo "Finding build-emulatorjs.sh..."
+          find RetroArch -name "build-emulatorjs.sh" -type f -print
+
+      - name: Build EmulatorJS WASM core
         run: |
           source emsdk/emsdk_env.sh
-          git clone https://github.com/EmulatorJS/EmulatorJS.git
+          cd RetroArch/emulatorjs
+          emmake ./build-emulatorjs.sh
 
-      - name: Build WASM core
+      - name: Show generated cores
         run: |
-          source emsdk/emsdk_env.sh
+          find EmulatorJS/data/cores -type f | sort || true
+          find RetroArch -path "*data/cores*" -type f | sort || true
 
-          mkdir -p EmulatorJS/data/cores
-
-          cp libretro-vecx/vecx_libretro_emscripten.bc EmulatorJS/
-
-          cd EmulatorJS
-
-          # 🔥 AQUÍ ESTÁ EL FIX REAL
-          emcc vecx_libretro_emscripten.bc \
-          -O3 \
-          -s WASM=1 \
-          -s SIDE_MODULE=1 \
-          -o data/cores/vecx_libretro.js
-
-      - name: Upload build
+      - name: Upload generated cores
         uses: actions/upload-artifact@v4
         with:
           name: vecx-core
-          path: EmulatorJS/data/cores/
+          path: |
+            EmulatorJS/data/cores/
+            RetroArch/../EmulatorJS/data/cores/
