@@ -3,11 +3,15 @@ name: Build Vecx Core
 on:
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Install dependencies
         run: |
           sudo apt update
@@ -20,45 +24,29 @@ jobs:
           ./emsdk install 3.1.51
           ./emsdk activate 3.1.51
 
-      - name: Build vecx libretro core
+      - name: Build vecx core
         run: |
           source emsdk/emsdk_env.sh
           git clone https://github.com/libretro/libretro-vecx.git
           cd libretro-vecx
           emmake make -f Makefile.libretro platform=emscripten EMSCRIPTEN=1 -j2
-          echo "GENERATED FILES:"
-          find . -maxdepth 2 -type f | sort
 
-      - name: Clone EmulatorJS RetroArch
+      - name: Clone RetroArch EmulatorJS
         run: |
           git clone https://github.com/EmulatorJS/RetroArch.git --branch next
 
-      - name: Prepare core for EmulatorJS
+      - name: Prepare core
         run: |
           cp libretro-vecx/vecx_libretro_emscripten.bc RetroArch/dist-scripts/vecx_libretro.bc
-          echo "DIST SCRIPTS:"
-          ls -la RetroArch/dist-scripts | grep vecx || true
 
-      - name: Locate EmulatorJS build script
-        run: |
-          echo "Finding build-emulatorjs.sh..."
-          find RetroArch -name "build-emulatorjs.sh" -type f -print
-
-      - name: Build EmulatorJS WASM core
+      - name: Build WASM
         run: |
           source emsdk/emsdk_env.sh
           cd RetroArch/emulatorjs
           emmake ./build-emulatorjs.sh
 
-      - name: Show generated cores
-        run: |
-          find EmulatorJS/data/cores -type f | sort || true
-          find RetroArch -path "*data/cores*" -type f | sort || true
-
-      - name: Upload generated cores
+      - name: Upload core
         uses: actions/upload-artifact@v4
         with:
           name: vecx-core
-          path: |
-            EmulatorJS/data/cores/
-            RetroArch/../EmulatorJS/data/cores/
+          path: EmulatorJS/data/cores/
