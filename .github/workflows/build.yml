@@ -1,0 +1,42 @@
+name: Build Vecx Core
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install deps
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential git python3 pkg-config
+
+      - name: Install Emscripten
+        run: |
+          git clone https://github.com/emscripten-core/emsdk.git
+          cd emsdk
+          ./emsdk install latest
+          ./emsdk activate latest
+
+      - name: Build vecx
+        run: |
+          source emsdk/emsdk_env.sh
+          git clone https://github.com/libretro/libretro-vecx.git
+          cd libretro-vecx
+          emmake make -f Makefile.libretro platform=emscripten
+
+      - name: Build EmulatorJS core
+        run: |
+          source emsdk/emsdk_env.sh
+          git clone https://github.com/EmulatorJS/RetroArch.git --branch next
+          cp libretro-vecx/vecx_libretro.bc RetroArch/dist-scripts/
+          cd RetroArch
+          emmake ./build-emulatorjs.sh
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: vecx-core
+          path: EmulatorJS/data/cores/
