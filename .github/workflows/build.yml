@@ -29,22 +29,30 @@ jobs:
 
           emmake make -f Makefile.libretro platform=emscripten EMSCRIPTEN=1 -j2
 
-          echo "🔍 LISTANDO ARCHIVOS GENERADOS:"
+          echo "Archivos generados:"
           ls -la
 
-      - name: Build EmulatorJS core
+      - name: Clone EmulatorJS builder
+        run: |
+          source emsdk/emsdk_env.sh
+          git clone https://github.com/EmulatorJS/EmulatorJS.git
+
+      - name: Build WASM core
         run: |
           source emsdk/emsdk_env.sh
 
-          git clone https://github.com/EmulatorJS/RetroArch.git --branch next
+          mkdir -p EmulatorJS/data/cores
 
-          echo "🔍 BUSCANDO ARCHIVO .bc"
-          find . -name "*.bc"
+          cp libretro-vecx/vecx_libretro_emscripten.bc EmulatorJS/
 
-          cp libretro-vecx/*.bc RetroArch/dist-scripts/ || true
+          cd EmulatorJS
 
-          cd RetroArch
-          emmake ./build-emulatorjs.sh
+          # 🔥 AQUÍ ESTÁ EL FIX REAL
+          emcc vecx_libretro_emscripten.bc \
+          -O3 \
+          -s WASM=1 \
+          -s SIDE_MODULE=1 \
+          -o data/cores/vecx_libretro.js
 
       - name: Upload build
         uses: actions/upload-artifact@v4
