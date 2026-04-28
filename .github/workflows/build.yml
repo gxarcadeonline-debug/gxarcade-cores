@@ -27,13 +27,10 @@ jobs:
           git clone https://github.com/libretro/libretro-vecx.git
           cd libretro-vecx
 
-          # 🔥 FIX COMPATIBILIDAD WEB
-          emmake make -f Makefile.libretro \
-          platform=emscripten \
-          EMSCRIPTEN=1 \
-          HAVE_OPENGLES=0 \
-          HAVE_OPENGL=0 \
-          -j2
+          emmake make -f Makefile.libretro platform=emscripten EMSCRIPTEN=1 -j2
+
+          echo "🔍 LISTANDO ARCHIVOS GENERADOS:"
+          ls -la
 
       - name: Build EmulatorJS core
         run: |
@@ -41,7 +38,10 @@ jobs:
 
           git clone https://github.com/EmulatorJS/RetroArch.git --branch next
 
-          cp libretro-vecx/vecx_libretro.bc RetroArch/dist-scripts/
+          echo "🔍 BUSCANDO ARCHIVO .bc"
+          find . -name "*.bc"
+
+          cp libretro-vecx/*.bc RetroArch/dist-scripts/ || true
 
           cd RetroArch
           emmake ./build-emulatorjs.sh
