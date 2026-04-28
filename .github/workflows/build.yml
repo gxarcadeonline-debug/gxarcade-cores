@@ -8,6 +8,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Install dependencies
         run: |
           sudo apt update
@@ -25,13 +26,23 @@ jobs:
           source emsdk/emsdk_env.sh
           git clone https://github.com/libretro/libretro-vecx.git
           cd libretro-vecx
-          emmake make -f Makefile.libretro platform=emscripten
+
+          # 🔥 FIX COMPATIBILIDAD WEB
+          emmake make -f Makefile.libretro \
+          platform=emscripten \
+          EMSCRIPTEN=1 \
+          HAVE_OPENGLES=0 \
+          HAVE_OPENGL=0 \
+          -j2
 
       - name: Build EmulatorJS core
         run: |
           source emsdk/emsdk_env.sh
+
           git clone https://github.com/EmulatorJS/RetroArch.git --branch next
+
           cp libretro-vecx/vecx_libretro.bc RetroArch/dist-scripts/
+
           cd RetroArch
           emmake ./build-emulatorjs.sh
 
@@ -39,4 +50,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: vecx-core
-          path: RetroArch/../EmulatorJS/data/cores/
+          path: EmulatorJS/data/cores/
